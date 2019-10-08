@@ -1,16 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
 #include <wait.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <time.h>
-#include <inttypes.h>
-#include <math.h>
 
 struct data
 {
