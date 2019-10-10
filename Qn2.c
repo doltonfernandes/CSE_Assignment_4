@@ -137,7 +137,6 @@ void *wait_for_slot(void *arg)
 	pthread_mutex_lock(&student_m[args->id]);
 	pthread_cond_wait(&student_c[args->id],&student_m[args->id]);
 	printf("Student with id %d arrived at table %d\n",args->id+1,student_status[args->id]);
-	student_status[args->id]=1;
 	pthread_mutex_unlock(&student_m[args->id]);
 	return NULL;
 }
@@ -146,9 +145,9 @@ void *student_t(void *arg)
 {
 	struct student_details *args=arg;
 	wait_for_slot(arg);
-	pthread_mutex_lock(&queue_zero_m[student_status[args->id]]);
-	pthread_cond_wait(&queue_zero_c[student_status[args->id]],&queue_zero_m[student_status[args->id]]);
-	pthread_mutex_unlock(&queue_zero_m[student_status[args->id]]);
+	pthread_mutex_lock(&queue_zero_m[student_status[args->id]-1]);
+	pthread_cond_wait(&queue_zero_c[student_status[args->id]-1],&queue_zero_m[student_status[args->id]-1]);
+	pthread_mutex_unlock(&queue_zero_m[student_status[args->id]-1]);
 	return NULL;
 }
 
