@@ -15,17 +15,60 @@ struct serving_table_details
 	int table_no,slots;
 };
 
-pthread_mutex_t table[100];
+struct student_details
+{
+	int id;
+};
 
-int N,M,K,table_status[100],table_curr_slots[100],students_served;
+int min(int a,int b)
+{
+	if(a<b)
+	{
+		return a;
+	}
+	return b;
+}
+
+pthread_mutex_t table[100],queue[100],queue_zero_m[100],student_m[100],main_mut;
+
+pthread_cond_t queue_zero_c[100],student_c[100];
+
+int N,M,K,table_status[100],table_curr_slots[100],queue_a[100][100],student_status[100],students_served=0;
 
 pthread_t robot[100],student[100];
 
 void *ready_to_serve_table(void *arg)
 {
 	struct serving_table_details *args=arg;
+	printf("Serving biryani after %d student(s) come at table %d\n",args->slots,args->table_no+1);
+	int size=0,stak[100];
+	for(int i=0;size<args->slots;i++)
+	{
+		if(student_status[i]==0)
+		{
+			pthread_mutex_lock(&student_m[i]);
+			if(student_status[i]==0)
+			{
+				student_status[i]=args->table_no+1;
+				sleep(0.5);
+				pthread_cond_signal(&student_c[i]);
+				stak[size++]=i;
+			}
+			pthread_mutex_unlock(&student_m[i]);
+		}
+	}
+	sleep(0.5);
+	printf("Started serving biryani at table %d\n",args->table_no+1);
+	for(int i=0;i<size;i++)
+	{
+		sleep(0.5);
+		printf("Biryani served to student with id - %d from table %d\n",stak[i]+1,args->table_no+1);
+	}
+	printf("Served %d slot(s) of biryani from table %d\n",args->slots,args->table_no+1);
+	pthread_mutex_lock(&queue_zero_m[args->table_no]);
 	table_curr_slots[args->table_no]-=args->slots;
-	printf("Served %d from table %d\n",args->slots,args->table_no+1);
+	pthread_cond_broadcast(&queue_zero_c[args->table_no]);
+	pthread_mutex_unlock(&queue_zero_m[args->table_no]);
 	return NULL;
 }
 
@@ -35,7 +78,15 @@ void *serving_mode(void *arg)
 	tmp->table_no=args->table_no;
 	while(table_curr_slots[args->table_no])
 	{
-		tmp->slots=1+rand()%(table_curr_slots[args->table_no]);
+		pthread_mutex_lock(&main_mut);
+		if(students_served==K)
+		{
+			pthread_mutex_unlock(&main_mut);
+			break;
+		}
+		tmp->slots=min(1+rand()%(K-students_served),1+rand()%(table_curr_slots[args->table_no]));
+		students_served+=tmp->slots;
+		pthread_mutex_unlock(&main_mut);
 		pthread_t p;
 		pthread_create(&p,NULL,ready_to_serve_table,tmp);
 		pthread_join(p,NULL);
@@ -48,8 +99,7 @@ void *serving_mode(void *arg)
 void *biryani_ready(void *arg)
 {
 	struct vessel *v=arg;
-	int i;
-	for(i=0;v->r>0;i++,i%=N)
+	for(int i=0;v->r>0 && students_served<K;i++,i%=N)
 	{
 		if(!table_status[i])
 		{
@@ -83,31 +133,72 @@ void *robot_chef(void *arg)
 
 void *wait_for_slot(void *arg)
 {
-	
+	struct student_details *args=arg;
+	pthread_mutex_lock(&student_m[args->id]);
+	pthread_cond_wait(&student_c[args->id],&student_m[args->id]);
+	printf("Student with id %d arrived at table %d\n",args->id+1,student_status[args->id]);
+	student_status[args->id]=1;
+	pthread_mutex_unlock(&student_m[args->id]);
+	return NULL;
+}
+
+void *student_t(void *arg)
+{
+	struct student_details *args=arg;
+	wait_for_slot(arg);
+	pthread_mutex_lock(&queue_zero_m[student_status[args->id]]);
+	pthread_cond_wait(&queue_zero_c[student_status[args->id]],&queue_zero_m[student_status[args->id]]);
+	pthread_mutex_unlock(&queue_zero_m[student_status[args->id]]);
 	return NULL;
 }
 
 int main(void)
 {
+	printf("Enter the Number of tables,Number of robots and Number of students\n");
 	scanf("%d %d %d",&N,&M,&K);
+	pthread_mutex_init(&main_mut,NULL);
 	for(int i=0;i<N;i++)
 	{
 	    pthread_mutex_init(&table[i],NULL);
+	    pthread_mutex_init(&queue[i],NULL);
+	    pthread_mutex_init(&queue_zero_m[i],NULL);
+	    pthread_cond_init(&queue_zero_c[i],NULL);
+	    pthread_mutex_init(&queue_zero_m[i],NULL);
+	    pthread_cond_init(&queue_zero_c[i],NULL);
+	}
+	for(int i=0;i<K;i++)
+	{
+		pthread_mutex_init(&student_m[i],NULL);
+	    pthread_cond_init(&student_c[i],NULL);
 	}
 	srand(time(0));
 	for(int i=0;i<M;i++)
 	{
 		pthread_create(&robot[i],NULL,robot_chef,NULL);
 	}
-	students_served=0;
 	for(int i=0;i<K;i++)
 	{
-		pthread_create(&student[i],NULL,wait_for_slot,NULL);
+		struct student_details *s=malloc(sizeof(struct student_details));
+		s->id=i;
+		pthread_create(&student[i],NULL,student_t,s);
 	}
-	while(students_served<K){}
+	for(int i=0;i<K;i++)
+	{
+		pthread_join(student[i],NULL);
+	}
+	printf("All %d students served biryani successfully\n",K);
+	pthread_mutex_destroy(&main_mut);
 	for(int i=0;i<N;i++)
 	{
 	    pthread_mutex_destroy(&table[i]);
+	    pthread_mutex_destroy(&queue[i]);
+	    pthread_mutex_destroy(&queue_zero_m[i]);
+	    pthread_cond_destroy(&queue_zero_c[i]);
+	}
+	for(int i=0;i<K;i++)
+	{
+		pthread_mutex_destroy(&student_m[i]);
+	    pthread_cond_destroy(&student_c[i]);
 	}
 	return 0;
 }
