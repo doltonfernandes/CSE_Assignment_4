@@ -59,8 +59,9 @@ void *robot_t(void *arg)
 	while(1)
 	{
 		int w=2+rand()%4,r=1+rand()%10,p=25+rand()%26;
-		printf("Preparing %d vessels of capacity %d in %d seconds\n",r,p,w);
+		printf("Robot %d preparing %d vessels of capacity %d in %d seconds\n",args->id+1,r,p,w);
 		sleep(w);
+		printf("Robot %d done preparing %d vessels of capacity %d in %d seconds\n",args->id+1,r,p,w);
 		robot_status[args->id].r=args->r=r;
 		robot_status[args->id].p=args->p=p;
 		biryani_ready(arg);
@@ -76,6 +77,7 @@ void *ready_to_serve_table(int number_of_slots,int id)
 	table_status[id].status=1;
 	pthread_cond_wait(&table_c[id],&table_m[id]);
 	pthread_mutex_unlock(&table_m[id]);
+	printf("Table %d entering serving phase\n",id+1);
 	for(int i=1;i<=queue[id][0];i++)
 	{
 		sleep(0.5);
@@ -160,7 +162,9 @@ void student_in_slot(void *arg,int i)
 
 void *student_t(void *arg)
 {
+	sleep(1+rand()%4);
 	struct student_details *args=arg;
+	printf("Student with id - %d has arrived in mess and is waiting for slot\n",args->id+1);
 	int x=wait_for_slot(arg);
 	student_in_slot(arg,x);
 	return NULL;
@@ -202,7 +206,7 @@ void start_simulation()
 	{
 		pthread_join(student[i],NULL);
 	}
-	printf("All %d students served biryani successfully\n",K);
+	printf("All %d students served biryani successfully\nSimulation Over\n",K);
 	for(int i=0;i<M;i++)
 	{
 	    pthread_mutex_destroy(&robot_m[i]);

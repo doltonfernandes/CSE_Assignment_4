@@ -2,15 +2,16 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-// #include <sys/shm.h>
-// #include <unistd.h>
-// #include <wait.h>
+#include <unistd.h>
 
-int R,D,S,maxWaitTime=5,cab[100];
+struct rider_details
+{
+	int id;
+};
 
-pthread_t rider_t[100];
+int R,D,S;
 
-sem_t server[100],driver[100]; 
+pthread_t rider_t[100],driver_t[100],server_t[100];
 
 // sem_t mutex; 
 
@@ -42,47 +43,44 @@ sem_t server[100],driver[100];
 // 	return 0; 
 // }
 
-void BookCab(int cabType,int maxwt,int RideTime)
+void BookCab(int cabType,int maxWaitTime,int RideTime)
 {
-	for(int i=0;;i++,i%=D)
-	{
-		if(!cab[i])
-		{
-			cab[i]=1;
-			// pthread_create(&t1,NULL,thread,NULL); 
-		}
-	}
+	
 }
 
 void *rider_thread(void *arg)
 {
-	BookCab(rand()%2,maxWaitTime,1+rand()%5);
+	sleep(1+rand()%4);
+	int cabType=rand()%2;
+	int maxWaitTime=1+rand()%6;
+	int RideTime=1+rand()%5;
+	struct rider_details *args=arg;
+	if(cabType)
+	{
+		printf("Rider %d arrived who is looking for Pool Ride\n",args->id+1);
+	}
+	else
+	{
+		printf("Rider %d arrived who is looking for Premier Ride\n",args->id+1);
+	}
+	BookCab(cabType,maxWaitTime,RideTime);
 	return NULL;
 }
 
 void runsimulation()
 {
 	srand(time(0));
-	for(int i=0;i<S;i++)
+	for(int i=0;i<R;i++)
 	{
-		sem_init(&server[i],0,1); 
+		struct rider_details *p=malloc(sizeof(struct rider_details));
+		p->id=i;
+		pthread_create(&rider_t[i],NULL,rider_thread,p); 
 	}
-	for(int i=0;i<D;i++)
+	for(int i=0;i<R;i++)
 	{
-		sem_init(&driver[i],0,1); 
+		pthread_join(rider_t[i],NULL); 
 	}
-	for(int i=0;i<D;i++)
-	{
-		pthread_create(&rider_t[i],NULL,rider_thread,NULL); 
-	}
-	for(int i=0;i<S;i++)
-	{
-		sem_destroy(&server[i]); 
-	}
-	for(int i=0;i<D;i++)
-	{
-		sem_init(&driver[i],0,1); 
-	}
+	printf("Simulation Ended\n");
 }
 
 int main(void)
@@ -90,6 +88,5 @@ int main(void)
 	printf("Enter the Number of riders,Number of drivers and Number of servers\n");
 	scanf("%d %d %d",&R,&D,&S);
 	runsimulation();
-	printf("Simulation Ended\n");
 	return 0;
 }
