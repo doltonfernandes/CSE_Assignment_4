@@ -29,7 +29,7 @@ int min(int a,int b)
 	return b;
 }
 
-pthread_mutex_t table[100],queue_zero_m[100],student_m[100],main_mut;
+pthread_mutex_t table[100],queue[100],queue_zero_m[100],student_m[100],main_mut;
 
 pthread_cond_t queue_zero_c[100],student_c[100];
 
@@ -159,6 +159,7 @@ int main(void)
 	for(int i=0;i<N;i++)
 	{
 	    pthread_mutex_init(&table[i],NULL);
+	    pthread_mutex_init(&queue[i],NULL);
 	    pthread_mutex_init(&queue_zero_m[i],NULL);
 	    pthread_cond_init(&queue_zero_c[i],NULL);
 	    pthread_mutex_init(&queue_zero_m[i],NULL);
@@ -189,6 +190,7 @@ int main(void)
 	for(int i=0;i<N;i++)
 	{
 	    pthread_mutex_destroy(&table[i]);
+	    pthread_mutex_destroy(&queue[i]);
 	    pthread_mutex_destroy(&queue_zero_m[i]);
 	    pthread_cond_destroy(&queue_zero_c[i]);
 	}
