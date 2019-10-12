@@ -83,6 +83,7 @@ void *MakePayment(void *arg)
 	    		continue;
     		}
     		server_status[i]=1;
+    		printf("Payment process by rider %d to cab %d through server %d has been initiated\n",args->id+1,args->cid,i+1);
     		sleep(2);
     		printf("Payment done by rider %d to cab %d through server %d\n",args->id+1,args->cid,i+1);
 	   		pthread_mutex_unlock(&server_m[i]);
@@ -96,18 +97,20 @@ void *MakePayment(void *arg)
 
 void *rider_thread(void *arg)
 {
-	sleep(1+rand()%6);
+	int tm=1+rand()%6;
+	sleep(tm);
+	struct rider_details *args=arg;
+	printf("Rider %d online after %d seconds from the start\n",args->id+1,tm);
 	int cabType=rand()%2;
 	int maxWaitTime=1+rand()%6;
 	int RideTime=1+rand()%5;
-	struct rider_details *args=arg;
 	if(cabType)
 	{
-		printf("Rider %d arrived who is looking for Pool Ride\n",args->id+1);
+		printf("Rider %d is looking for Pool Ride\n",args->id+1);
 	}
 	else
 	{
-		printf("Rider %d arrived who is looking for Premier Ride\n",args->id+1);
+		printf("Rider %d is looking for Premier Ride\n",args->id+1);
 	}
 	int boooking_status=BookCab(cabType,maxWaitTime,RideTime);
 	if(boooking_status>0)
