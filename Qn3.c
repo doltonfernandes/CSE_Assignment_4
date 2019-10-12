@@ -6,18 +6,16 @@
 
 struct rider_details
 {
-	int id;
+	int id,cid;
 };
 
-int R,D,S,driver_status[100];
+int R,D,S,driver_status[100],server_status[100];
 
-pthread_t rider_t[100],driver_t[100],server_t[100];
+pthread_t rider_t[100];
 
-pthread_mutex_t driver_m[100];
+pthread_mutex_t driver_m[100],server_m[100];
 
-pthread_cond_t rider_c[100];
-
-sem_t driver_s[100],free_cabs;
+sem_t driver_s[100],free_cabs,free_servers;
 
 void *waiting_thread_1()
 {
@@ -70,11 +68,37 @@ int BookCab(int cabType,int maxWaitTime,int RideTime)
 	return 0;
 }
 
+void *MakePayment(void *arg)
+{
+	struct rider_details *args=arg;
+    sem_wait(&free_servers);
+    for(int i=0;i<S;i++)
+    {
+    	if(server_status[i]==0)
+    	{
+    		pthread_mutex_lock(&server_m[i]);
+    		if(server_status[i])
+    		{
+	    		pthread_mutex_unlock(&server_m[i]);
+	    		continue;
+    		}
+    		server_status[i]=1;
+    		sleep(2);
+    		printf("Payment done by rider %d to cab %d\n",args->id+1,args->cid);
+	   		pthread_mutex_unlock(&server_m[i]);
+    		server_status[i]=0;
+	   		break;
+    	}
+    }
+    sem_post(&free_servers);
+	return NULL;
+}
+
 void *rider_thread(void *arg)
 {
-	sleep(1+rand()%10);
+	sleep(1+rand()%6);
 	int cabType=rand()%2;
-	int maxWaitTime=1+rand()%10;
+	int maxWaitTime=1+rand()%6;
 	int RideTime=1+rand()%5;
 	struct rider_details *args=arg;
 	if(cabType)
@@ -128,6 +152,8 @@ void *rider_thread(void *arg)
 	  	 	sem_post(&free_cabs); 
 		}
 		sem_post(&driver_s[boooking_status-1]);
+		args->cid=boooking_status;
+		MakePayment(arg);
 	}
 	else
 	{
@@ -144,13 +170,15 @@ void runsimulation()
 {
 	srand(time(0));
 	sem_init(&free_cabs,0,D);
-	for(int i=0;i<R;i++)
-	{
-		pthread_cond_init(&rider_c[i],NULL);
-	}
+	sem_init(&free_servers,0,S);
 	for(int i=0;i<D;i++)
 	{
+		pthread_mutex_init(&driver_m[i],NULL);
 		sem_init(&driver_s[i],0,2); 
+	}
+	for(int i=0;i<S;i++)
+	{
+		pthread_mutex_init(&server_m[i],NULL);
 	}
 	for(int i=0;i<R;i++)
 	{
@@ -164,13 +192,15 @@ void runsimulation()
 	}
 	printf("Simulation Ended\n");
 	sem_destroy(&free_cabs);
-	for(int i=0;i<R;i++)
-	{
-		pthread_cond_destroy(&rider_c[i]);
-	}
+	sem_destroy(&free_servers);
 	for(int i=0;i<D;i++)
 	{
+		pthread_mutex_destroy(&driver_m[i]);
 		sem_destroy(&driver_s[i]); 
+	}
+	for(int i=0;i<S;i++)
+	{
+		pthread_mutex_destroy(&server_m[i]);
 	}
 }
 
