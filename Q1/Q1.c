@@ -19,6 +19,10 @@ int *shareMem(size_t size)
 
 int randompos(int l,int r)
 {
+	if(l>r)
+	{
+		return 0;
+	}
 	return l+rand()%(r-l+1);
 }
 
@@ -168,11 +172,52 @@ void *quicksort_processes(void *arg)
 	return NULL;
 }
 
+void *quicksort_normal(void *arg)
+{
+	struct data *args=arg;
+	int *arr=args->arr,l=args->l,r=args->r,pivot=args->pivot;
+	if(l<r)
+	{
+		if(r-l<5)
+		{
+			for(int i=l+1;i<=r;i++)
+			{
+				for(int j=i-1;j>=l;j--)
+				{
+					if(arr[j]>arr[j+1])
+					{
+						swap(&arr[j],&arr[j+1]);
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+			return NULL;
+		}
+		int pos=partition(arr,l,r,pivot);
+		struct data *args1=malloc(sizeof(struct data)),*args2=malloc(sizeof(struct data));
+		args1->arr=arr;
+		args1->l=pos+1;
+		args1->r=r;
+		args1->pivot=randompos(pos+1,r);
+		quicksort_normal(args1);
+		args2->arr=arr;
+		args2->l=l;
+		args2->r=pos-1;
+		args2->pivot=randompos(l,pos-1);
+		quicksort_normal(args2);
+	}
+	return NULL;
+}
+
 void runsorts()
 {
 	int n;
 	scanf("%d",&n);
 	int *arr=shareMem(sizeof(int)*(n+5));
+	int crr[n+5];
 	for(int i=0;i<n;i++)
 	{
 		scanf("%d",&arr[i]);
@@ -181,7 +226,7 @@ void runsorts()
 	int brr[n+5];
 	for(int i=0;i<n;i++)
 	{
-		brr[i]=arr[i];
+		crr[i]=brr[i]=arr[i];
 	}
 	struct data *args=malloc(sizeof(struct data));
 	args->arr=brr;
@@ -211,6 +256,18 @@ void runsorts()
 	clock_gettime(CLOCK_MONOTONIC_RAW,&ts);
 	en=ts.tv_nsec/(1e9)+ts.tv_sec;
 	// printarr(arr,n);
+	printf("time = %Lf\n",en-st);
+
+	args->arr=crr;
+	printf("Running normal_concurrent_quicksort\n");
+	clock_gettime(CLOCK_MONOTONIC_RAW,&ts);
+	st=ts.tv_nsec/(1e9)+ts.tv_sec;
+
+	quicksort_normal(args);
+
+	clock_gettime(CLOCK_MONOTONIC_RAW,&ts);
+	en=ts.tv_nsec/(1e9)+ts.tv_sec;
+	// printarr(crr,n);
 	printf("time = %Lf\n",en-st);
 }
 
