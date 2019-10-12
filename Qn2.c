@@ -36,9 +36,9 @@ struct table_details table_status[100];
 
 pthread_t student[100],table[100],robot[100];
 
-pthread_mutex_t robot_m[100],table_m[100],main_mut;
+pthread_mutex_t robot_m[100],table_m[100];
 
-pthread_cond_t robot_c[100],table_c[100],table_c2[100];
+pthread_cond_t robot_c[100],table_c[100];
 
 void *biryani_ready(void *arg)
 {
@@ -73,21 +73,12 @@ void *ready_to_serve_table(int number_of_slots,int id)
 {
 	pthread_mutex_lock(&table_m[id]);
 	queue[id][0]=0;
-	printf("Waiting for %d student(s) to come at table %d\n",number_of_slots,id+1);
+	printf("Table %d entered serving phase with %d slots\n",id+1,number_of_slots);
 	table_status[id].status=1;
 	pthread_cond_wait(&table_c[id],&table_m[id]);
 	pthread_mutex_unlock(&table_m[id]);
-	printf("Table %d entering serving phase\n",id+1);
-	for(int i=1;i<=queue[id][0];i++)
-	{
-		sleep(0.5);
-		printf("Biryani served to student with id - %d from table %d\n",queue[id][i]+1,id+1);
-	}
 	printf("Served %d slot(s) of biryani from table %d\n",number_of_slots,id+1);
-	pthread_mutex_lock(&table_m[id]);
-	pthread_cond_broadcast(&table_c2[id]);
 	queue[id][0]=table_status[id].status=0;
-	pthread_mutex_unlock(&table_m[id]);
 	return NULL;
 }
 
@@ -109,17 +100,13 @@ void *table_t(void *arg)
 			pthread_cond_signal(&robot_c[i]);
 			pthread_mutex_unlock(&robot_m[i]);
 			sleep(0.5);
-			pthread_mutex_lock(&main_mut);
-			if(students_served==K)
+			if(students_served>=K)
 			{
-				pthread_mutex_unlock(&main_mut);
 				break;
 			}
 			table_status[args->id].slot=min(1+rand()%(K-students_served),1+rand()%10);
 			students_served+=table_status[args->id].slot;
-			pthread_mutex_unlock(&main_mut);
 			table_status[args->id].present=0;
-			pthread_mutex_unlock(&main_mut);
 			ready_to_serve_table(table_status[args->id].slot,args->id);
 		}
 	}
@@ -150,13 +137,12 @@ void student_in_slot(void *arg,int i)
 	table_status[i].present++;
 	queue[i][0]++;
 	queue[i][queue[i][0]]=args->id;
-	printf("Student with id - %d arrived at table %d\n",args->id+1,i+1);
 	if(table_status[i].present==table_status[i].slot)
 	{
 		table_status[i].status=2;
 		pthread_cond_signal(&table_c[i]);
 	}
-	pthread_cond_wait(&table_c2[i],&table_m[i]);
+	printf("Student with id %d served biryani from table %d\n",args->id+1,i+1);
 	pthread_mutex_unlock(&table_m[i]);
 }
 
@@ -172,7 +158,6 @@ void *student_t(void *arg)
 
 void start_simulation()
 {
-	pthread_mutex_init(&main_mut,NULL);
 	for(int i=0;i<N;i++)
 	{
 	    pthread_mutex_init(&table_m[i],NULL);
@@ -206,6 +191,7 @@ void start_simulation()
 	{
 		pthread_join(student[i],NULL);
 	}
+	sleep(2);
 	printf("All %d students served biryani successfully\nSimulation Over\n",K);
 	for(int i=0;i<M;i++)
 	{
@@ -217,7 +203,6 @@ void start_simulation()
 	    pthread_mutex_destroy(&table_m[i]);
 	    pthread_cond_destroy(&table_c[i]);
 	}
-    pthread_mutex_destroy(&main_mut);
 }
 
 int main(void)
@@ -225,5 +210,5 @@ int main(void)
 	printf("Enter the Number of tables,Number of robots and Number of students\n");
 	scanf("%d %d %d",&N,&M,&K);
 	start_simulation();
-	return 0;
+	exit(0);
 }
