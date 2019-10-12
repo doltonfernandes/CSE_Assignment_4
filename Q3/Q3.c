@@ -84,7 +84,7 @@ void *MakePayment(void *arg)
     		}
     		server_status[i]=1;
     		sleep(2);
-    		printf("Payment done by rider %d to cab %d\n",args->id+1,args->cid);
+    		printf("Payment done by rider %d to cab %d through server %d\n",args->id+1,args->cid,i+1);
 	   		pthread_mutex_unlock(&server_m[i]);
     		server_status[i]=0;
 	   		break;
