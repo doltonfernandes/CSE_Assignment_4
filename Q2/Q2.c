@@ -28,7 +28,7 @@ int min(int a,int b)
 	return b;
 }
 
-int N,M,K,students_served=0,queue[100][100];
+int N,M,K,queue[100][100];
 
 struct chef_details robot_status[100];
 
@@ -100,12 +100,7 @@ void *table_t(void *arg)
 			pthread_cond_signal(&robot_c[i]);
 			pthread_mutex_unlock(&robot_m[i]);
 			sleep(0.5);
-			if(students_served>=K)
-			{
-				break;
-			}
-			table_status[args->id].slot=min(1+rand()%(K-students_served),1+rand()%10);
-			students_served+=table_status[args->id].slot;
+			table_status[args->id].slot=1+rand()%10;
 			table_status[args->id].present=0;
 			ready_to_serve_table(table_status[args->id].slot,args->id);
 		}
@@ -191,7 +186,6 @@ void start_simulation()
 	{
 		pthread_join(student[i],NULL);
 	}
-	sleep(2);
 	printf("All %d students served biryani successfully\nSimulation Over\n",K);
 	for(int i=0;i<M;i++)
 	{
